@@ -9,6 +9,7 @@ import Brand from './components/Brand.jsx';
 import Arrow from './components/Arrow.jsx';
 import { getDestination } from './data/destinations.js';
 import { useMediaQuery } from './hooks/useMedia.js';
+import { useInterfaceSounds } from './hooks/useInterfaceSounds.js';
 
 const SphereExperience = lazy(() => import('./components/SphereExperience.jsx'));
 
@@ -24,6 +25,8 @@ function FeatureIcon({ type }) {
   }
   return <svg viewBox="0 0 32 32" fill="none" aria-hidden="true"><path d="M16 3 27 7v8c0 7-4.6 11.5-11 14-6.4-2.5-11-7-11-14V7l11-4Z" stroke="currentColor" /><path d="m11 16 3.2 3.2L21.5 12" stroke="currentColor" /></svg>;
 }
+
+const HERO_SPHERE_SCALE = 0.74;
 
 const CAPABILITIES = [
   {
@@ -62,9 +65,11 @@ export default function App() {
   const motion = useRef({ x: 0, y: 0, scale: 0.24, cameraZ: 6.8, opacity: 0 });
   const [activeScene, setActiveScene] = useState(0);
   const [activeSphereScene, setActiveSphereScene] = useState(0);
+  const [destinationMarkersVisible, setDestinationMarkersVisible] = useState(false);
   const [accessOpen, setAccessOpen] = useState(false);
   const [destination, setDestination] = useState(readStoredDestination);
   const reducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)');
+  const interfaceSounds = useInterfaceSounds();
   const closeAccess = useCallback(() => setAccessOpen(false), []);
   const openAccess = useCallback(() => setAccessOpen(true), []);
   const changeDestination = useCallback((nextDestination) => {
@@ -90,13 +95,13 @@ export default function App() {
           y: 0,
           yPercent: 0,
         });
-        Object.assign(motion.current, { x: 0, y: 0, scale: 0.62, cameraZ: 6.8, opacity: 1 });
+        Object.assign(motion.current, { x: 0, y: 0, scale: HERO_SPHERE_SCALE, cameraZ: 6.8, opacity: 1 });
       } else {
         const intro = gsap.timeline({ defaults: { ease: 'expo.out' } });
         intro
           .to('.intro-veil__inner', { opacity: 0, y: -10, duration: 0.55 }, 0.35)
           .to('.intro-veil', { yPercent: -100, duration: 1.15, ease: 'expo.inOut' }, 0.62)
-          .to(motion.current, { opacity: 1, scale: 0.62, duration: 2.1 }, 0.7)
+          .to(motion.current, { opacity: 1, scale: HERO_SPHERE_SCALE, duration: 2.1 }, 0.7)
           .fromTo('[data-title-line]', { yPercent: 115 }, { yPercent: 0, duration: 1.45, stagger: 0.12 }, 1.02)
           .fromTo('[data-nav]', { y: -20, opacity: 0 }, { y: 0, opacity: 1, duration: 1.1 }, 1.12)
           .fromTo('[data-hero-reveal]', { y: 18, opacity: 0 }, { y: 0, opacity: 1, duration: 1.1, stagger: 0.09 }, 1.42)
@@ -119,7 +124,9 @@ export default function App() {
           .to(motion.current, { x: 1.8, y: 0, scale: 0.88, cameraZ: 6.4, duration: 0.85, ease: 'power2.inOut' }, 0.85)
           .to(motion.current, { x: -1.8, y: 0.05, scale: 0.94, cameraZ: 6.2, duration: 1.1, ease: 'power2.inOut' }, 2.55)
           .to(motion.current, { x: 0, y: 0.15, scale: 1.25, cameraZ: 5.8, duration: 1.05, ease: 'power2.inOut' }, 4.45)
-          .to(motion.current, { x: 0, y: 1.6, scale: 0.52, cameraZ: 6.8, opacity: 0.85, duration: 1, ease: 'power2.inOut' }, 6.5);
+          .to(motion.current, { x: -0.45, y: 0, scale: 1.9, cameraZ: 6.4, opacity: 0.96, duration: 1, ease: 'power2.inOut' }, 5.5)
+          // Hold the close-up throughout the destination checklist instead of zooming only at the page end.
+          .to(motion.current, { opacity: 0.96, duration: 1, ease: 'none' }, 6.5);
 
         gsap.utils.toArray('[data-section-reveal]').forEach((section) => {
           const items = section.querySelectorAll('[data-reveal-item]');
@@ -148,6 +155,19 @@ export default function App() {
           onEnterBack: activateSection,
         });
       });
+
+      const destinationFooter = document.querySelector('.destination-footer');
+      if (destinationFooter) {
+        ScrollTrigger.create({
+          trigger: destinationFooter,
+          start: 'top 65%',
+          end: 'bottom 35%',
+          onEnter: () => setDestinationMarkersVisible(true),
+          onEnterBack: () => setDestinationMarkersVisible(true),
+          onLeave: () => setDestinationMarkersVisible(false),
+          onLeaveBack: () => setDestinationMarkersVisible(false),
+        });
+      }
     });
 
     document.fonts?.ready.then(() => {
@@ -169,10 +189,23 @@ export default function App() {
     <>
       <SceneBackground activeScene={activeScene} reducedMotion={reducedMotion} />
       <Suspense fallback={null}>
-        <SphereExperience motion={motion} reducedMotion={reducedMotion} activeScene={activeSphereScene} />
+        <SphereExperience
+          motion={motion}
+          reducedMotion={reducedMotion}
+          activeScene={activeSphereScene}
+          destinationMarkersVisible={destinationMarkersVisible}
+          destinationValue={destination}
+          onDestinationChange={changeDestination}
+        />
       </Suspense>
       <div className="grain" aria-hidden="true" />
-      <Navigation onAccess={openAccess} />
+      <Navigation
+        onAccess={openAccess}
+        mapHidden={destinationMarkersVisible}
+        soundEnabled={interfaceSounds.enabled}
+        soundSupported={interfaceSounds.supported}
+        onSoundToggle={interfaceSounds.toggle}
+      />
 
       <main id="experience" ref={experienceRef}>
         <section className="panel hero" id="home" data-scene="0" aria-labelledby="hero-title">
@@ -260,7 +293,7 @@ export default function App() {
               Verify on the official application portal<Arrow />
             </a>
           </div>
-          <DestinationMap value={destination} onChange={changeDestination} onAccess={openAccess} />
+          <DestinationMap destination={destination} onDestinationChange={changeDestination} onAccess={openAccess} />
           <footer className="footer">
             <a href="#home" aria-label="Back to top"><Brand compact /></a>
             <p>© 2026 Russia Guide</p>
@@ -274,6 +307,7 @@ export default function App() {
           onClose={closeAccess}
           destination={destination}
           onDestinationChange={changeDestination}
+          onSound={interfaceSounds.play}
         />
       )}
       <div className="intro-veil" aria-hidden="true">

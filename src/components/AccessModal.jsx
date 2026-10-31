@@ -2,29 +2,11 @@ import { useEffect, useRef, useState } from 'react';
 import Brand from './Brand.jsx';
 import Arrow from './Arrow.jsx';
 import { DESTINATIONS, getDestination } from '../data/destinations.js';
+import { CHECKLIST_ITEMS } from '../data/checklist.js';
 
 const OFFICIAL_PORTAL = 'https://education-in-russia.com/';
 
-const CHECKLIST_ITEMS = [
-  {
-    title: 'Verify your eligibility.',
-    text: 'Check current academic, course, language, and university requirements through official sources.',
-  },
-  {
-    title: 'Compare suitable options.',
-    text: 'Shortlist courses and universities based on your goals—not only on the lowest advertised cost.',
-  },
-  {
-    title: 'Prepare your documents.',
-    text: 'Organise your passport and academic records; confirm translations, attestations, or medical documents where required.',
-  },
-  {
-    title: 'Build a complete budget.',
-    text: 'Verify tuition, accommodation, insurance, travel, visa-related expenses, and living-cost inclusions before proceeding.',
-  },
-];
-
-export default function AccessModal({ onClose, destination, onDestinationChange }) {
+export default function AccessModal({ onClose, destination, onDestinationChange, onSound }) {
   const dialogRef = useRef(null);
   const nameRef = useRef(null);
   const [submitted, setSubmitted] = useState(false);
@@ -80,6 +62,7 @@ export default function AccessModal({ onClose, destination, onDestinationChange 
     }
     setProfile({ firstName: name.split(' ')[0], course, destination: chosenDestination });
     setSubmitted(true);
+    onSound?.('success');
   };
 
   const downloadChecklist = () => {
